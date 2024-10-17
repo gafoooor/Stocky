@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stocky - Investment Insights</title>
+  <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+  <div class="container">
+    <h1>Stocky - Your Investment Guide</h1>
+    <p>Gain real-time market insights and recommendations.</p>
+    <div class="stock-search">
+      <label for="stockSymbol">Enter Stock Symbol:</label>
+      <input type="text" id="stockSymbol" placeholder="e.g., AAPL">
+      <button id="searchButton">Analyze</button>
+    </div>
+    <div id="stock-details" class="hidden">
+      <h2>Stock Details</h2>
+      <div class="data-point">
+        <h3>Media Sentiment</h3>
+        <p id="media-sentiment"></p>
+      </div>
+      <div class="data-point">
+        <h3>Recent Revenue Report</h3>
+        <p id="revenue-report"></p>
+      </div>
+      <div class="data-point">
+        <h3>Company Profile</h3>
+        <p id="company-profile"></p>
+      </div>
+      <div class="follow-up">
+        <h3>Follow-Up Questions</h3>
+        <textarea id="followup-question" placeholder="Ask a question about the stock"></textarea>
+        <button id="askQuestionButton">Ask</button>
+      </div>
+      <div id="insights" class="hidden">
+        <h2>Investment Insights</h2>
+        <p id="investment-recommendation"></p>
+        <p id="risk-assessment"></p>
+        <p id="portfolio-optimization"></p>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

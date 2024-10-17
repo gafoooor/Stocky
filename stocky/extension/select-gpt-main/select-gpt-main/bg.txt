@@ -1,0 +1,236 @@
+const uid = () => {
+	const generateNumber = (limit) => {
+	   const value = limit * Math.random();
+	   return value | 0;
+	}
+	const generateX = () => {
+		const value = generateNumber(16);
+		return value.toString(16);
+	}
+	const generateXes = (count) => {
+		let result = '';
+		for(let i = 0; i < count; ++i) {
+			result += generateX();
+		}
+		return result;
+	}
+	const generateconstant = () => {
+		const value = generateNumber(16);
+		const constant =  (value & 0x3) | 0x8;
+		return constant.toString(16);
+	}
+    
+	const generate = () => {
+  	    const result = generateXes(8)
+  	         + '-' + generateXes(4)
+  	         + '-' + '4' + generateXes(3)
+  	         + '-' + generateconstant() + generateXes(3)
+  	         + '-' + generateXes(12)
+  	    return result;
+	};
+    return generate()
+};
+
+const getToken = async () => {
+    return new Promise(async (resolve, reject) => {
+        const resp = await fetch("https://chat.openai.com/api/auth/session")
+        if (resp.status === 403) {
+            reject('CLOUDFLARE')
+        }
+        try {
+            const data = await resp.json()
+            if (!data.accessToken) {
+                reject('ERROR')
+            }
+            resolve(data.accessToken)
+        } catch (err) {
+            reject('ERROR')
+        }
+    })
+}
+
+const getResponse = async (question) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const accessToken = await getToken();
+            const res = await fetch("https://chat.openai.com/backend-api/conversation", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + accessToken,
+                },
+                body: JSON.stringify({
+                    action: "next",
+                    messages: [
+                        {
+                            id: uid(),
+                            role: "user",
+                            content: {
+                                content_type: "text",
+                                parts: [question]
+                            }
+                        }
+                    ],
+                    model: "text-davinci-002-render",
+                    parent_message_id: uid()
+                })
+            })   
+            resolve(res.body)
+        } catch (e) {
+            if (e === "CLOUDFLARE") {
+                reject("CLOUDFLARE")
+            } else {
+                reject("ERROR")
+            }
+        }
+    })
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener((msg) => {
+        const question = msg.question
+        getResponse(question).then(async answer => {
+            const resRead = answer.getReader()
+            while (true) {
+                const {done, value} = await resRead.read()
+                if (done) break
+                if (done === undefined || value === undefined) port.postMessage('ERROR')
+                const data = new TextDecoder().decode(value)
+                port.postMessage(data)
+            }
+        }).catch((e) => port.postMessage(e))
+    })
+})
+
+
+
+//////////////////////////
+const uid = () => {
+    const generateNumber = (limit) => {
+        const value = limit * Math.random();
+        return value | 0;
+    }
+    const generateX = () => {
+        const value = generateNumber(16);
+        return value.toString(16);
+    }
+    const generateXes = (count) => {
+        let result = '';
+        for(let i = 0; i < count; ++i) {
+            result += generateX();
+        }
+        return result;
+    }
+    const generateconstant = () => {
+        const value = generateNumber(16);
+        const constant =  (value & 0x3) | 0x8;
+        return constant.toString(16);
+    }
+    
+    const generate = () => {
+        const result = generateXes(8)
+             + '-' + generateXes(4)
+             + '-' + '4' + generateXes(3)
+             + '-' + generateconstant() + generateXes(3)
+             + '-' + generateXes(12)
+        return result;
+    };
+    return generate()
+};
+
+chrome.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener(async (msg) => {
+        const question = msg.question;
+        try {
+            // Make a request to your Python chat engine endpoint
+            const response = await fetch('http://localhost:5000/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: question }), // Send question as 'message'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to get response from chat engine');
+            }
+            const responseData = await response.json();
+            port.postMessage(responseData);
+        } catch (error) {
+            console.error('Error:', error);
+            port.postMessage({ error: 'An error occurred' });
+        }
+    });
+});
+
+///////////////////////////////////
+popupjs code: 
+document.addEventListener("DOMContentLoaded", async () => {
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+    const getActiveTab = async () => {
+        const tabs = await chrome.tabs.query({
+            currentWindow: true,
+            active: true
+        })
+        return tabs[0]
+    }
+
+    const showPopup = async (answer) => {
+        if (answer !== "CLOUDFLARE" && answer !== "ERROR") {
+            try {
+                let res = await answer.split("data:")
+                try {
+                    const detail = JSON.parse(res[0]).detail
+                    document.getElementById('output').style.opacity = 1
+                    document.getElementById('output').innerHTML = detail
+                    return;
+                } catch (e) {
+                    try {
+                        res = res[1].trim()
+                        if (res === "[DONE]") return
+                        answer = JSON.parse(res)
+                        let final = answer.message.content.parts[0]
+                        final = final.replace(/\n/g,'<br>')
+                        document.getElementById('output').style.opacity = 1
+                        document.getElementById('output').innerHTML = final
+                    } catch (e) {}
+                }
+            } catch (e) {
+                document.getElementById('output').style.opacity = 1
+                document.getElementById('output').innerHTML = "Something went wrong. Please try in a few minutes."
+            }
+
+        } else if (answer === "CLOUDFLARE") {
+            document.getElementById('input').style.opacity = 1
+            document.getElementById('input').innerHTML = 'You need to once visit <a target="_blank" href="https://chat.openai.com/chat">chat.openai.com</a> and check if the connection is secure. Redirecting...'
+            await sleep(3000)
+            chrome.tabs.create({url: "https://chat.openai.com/chat"})
+        } else {
+            document.getElementById('output').style.opacity = 1
+            document.getElementById('output').innerHTML = 'Something went wrong. Are you logged in to <a target="_blank" href="https://chat.openai.com/chat">chat.openai.com</a>? Try logging out and logging in again.'
+        }
+    }
+
+    const getData = async (selection) => {
+        if (!selection.length == 0) {
+            document.getElementById('input').style.opacity = 1
+            document.getElementById('input').innerHTML = selection
+            document.getElementById('output').style.opacity = 0.5
+            document.getElementById('output').innerHTML = "Loading..."
+            const port = chrome.runtime.connect();
+            port.postMessage({question: selection})
+            port.onMessage.addListener((msg) => showPopup(msg))
+        } else {
+            document.getElementById('input').style.opacity = 0.5
+            document.getElementById('input').innerHTML = "You have to first select some text"
+        }
+    }
+
+    const getSelectedText = async () => {
+        const activeTab = await getActiveTab()
+        chrome.tabs.sendMessage(activeTab.id, {type: "LOAD"}, getData)
+    }
+
+    getSelectedText()
+})
